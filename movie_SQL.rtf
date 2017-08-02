@@ -1,0 +1,117 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1504\cocoasubrtf830
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww10800\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 \
+/*\
+1 : For each movie, return the title and the 'rating spread', that is, the difference between highest and lowest ratings given to \
+that movie. Sort by rating spread from highest to lowest, then by movie title.\
+*/\
+\
+SELECT m.title, (MAX(r.stars) - MIN(r.stars)) AS ratingspread \
+	FROM Movie m JOIN Rating r ON m.mID = r.mID GROUP BY m.mID \
+	ORDER BY ratingspread DESC, m.title;\
+\
+/*\
+2: Find the difference between the average rating of movies released before 1980 and the average rating of movies released after 1980.\
+ (Make sure to calculate the average rating for each movie, then the average of those averages for movies before 1980 and movies after. \
+Don't just calculate the overall average rating before and after 1980.) \
+*/\
+\
+SELECT abs(\
+	(SELECT AVG(r.stars) FROM Rating r JOIN Movie m ON m.mID = r.mID WHERE m.year < 1980 ) - \
+	(SELECT AVG(r.stars) FROM Rating r JOIN Movie m on m.mID = r.mID WHERE m.year > 1980)\
+	);\
+\
+/*\
+3: Some directors directed more than one movie. For all such directors, return the titles of all movies directed by them, along with the director name. \
+Sort by director name, then movie title. (As an extra challenge, try writing the query both with and without COUNT.) \
+*/\
+\
+SELECT director, title FROM Movie m \
+	WHERE m.director \
+	IN (SELECT director FROM Movie m GROUP BY m.director HAVING Count(director) > 1) \
+	ORDER BY m.director, m.title;\
+\
+/*\
+4: Find the movie(s) with the highest average rating. Return the movie title(s) and average rating. \
+*/\
+\
+SELECT m.title, AVG(stars) AS "highest average" \
+	FROM Rating r JOIN Movie m ON r.mID = m.mID GROUP BY r.mID HAVING AVG(stars) = \
+	(SELECT MAX(avg_stars) \
+	FROM (SELECT AVG(stars) AS avg_stars \
+	FROM Rating GROUP BY mID) temp);\
+\
+/*\
+5: Find the movie(s) with the lowest average rating. Return the movie title(s) and average rating.\
+*/\
+\
+SELECT m.title, AVG(stars) AS "lowest average" \
+	FROM Rating r JOIN Movie m ON r.mID = m.mID GROUP BY r.mID HAVING AVG(stars) = \
+	(SELECT MIN(avg_stars) \
+	FROM (SELECT AVG(stars) AS avg_stars \
+	FROM Rating GROUP BY mID) temp);\
+\
+\
+/*\
+\
+6:For each director, return the director's name together with the title(s) of the movie(s) they directed that received the highest rating among all of their movies, \
+and the value of that rating. Ignore movies whose director is NULL.\
+\
+\
+SELECT director, title, stars \
+	FROM Movie m JOIN Rating r ON m.mID = r.mID\
+	WHERE director IS NOT NULL\
+	GROUP BY director \
+	ORDER BY stars DESC;\
+*/\
+\
+SELECT distinct m.director, m.title, max(r.stars) \
+	FROM Movie m LEFT JOIN Rating r ON r.mID = m.mID\
+	WHERE director IS NOT NULL \
+	AND stars IS NOT NULL\
+	GROUP BY m.director;\
+\
+/*\
+7:For any rating where the reviewer is the same as the director of the movie, return the reviewer name, movie title, and number of stars.\
+*/\
+\
+SELECT rw.name, m.title, r.stars\
+	FROM Movie m JOIN Rating r ON m.mID = r.mID JOIN Reviewer rw on r.rID = rw.rID \
+	WHERE m.director = rw.name;\
+\
+\
+/*\
+8:Return all reviewer names and movie names together in a single list, alphabetized. (Sorting by the first name of the reviewer and first word in the title is fine; no need for special processing on last names or removing "The".)\
+*/\
+\
+SELECT CONCAT(rw.name, '   ||    ', m.title) reviewer_movie\
+	FROM Movie m JOIN Rating r ON m.mID = r.mID JOIN Reviewer rw ON r.rID = rw.rID\
+	ORDER BY rw.name, m.title;\
+\
+/*\
+9:For all pairs of reviewers such that both reviewers gave a rating to the same movie, return the names of both reviewers. \
+Eliminate duplicates, don't pair reviewers with themselves, and include each pair only once. For each pair, return the names in the pair in alphabetical order. \
+\
+*/\
+\
+SELECT DISTINCT rw1.name as name1, rw2.name as name2\
+	FROM Rating r1, Rating r2, Reviewer rw1, Reviewer rw2\
+	WHERE r1.mID = r2.mID\
+	AND r1.rID = rw1.rID\
+	AND r2.rID = rw2.rID\
+	AND rw1.name < rw2.name\
+	ORDER BY rw1.name;\
+\
+/*\
+10: For each rating that is the lowest (fewest stars) currently in the database, return the reviewer name, movie title, and number of stars.\
+*/\
+\
+SELECT name, title, stars \
+	FROM reviewer rw JOIN Rating r ON rw.rID = r.rID JOIN Movie m ON r.mID = m.mID\
+	WHERE stars IN (SELECT min(stars) FROM Rating);\
+}
